@@ -1,5 +1,0 @@
-#csvファイルを読み込んで8000トークンごとに1リストにしてリストが幾つできるかを確認するコード
-import csv
-import tiktoken
-
-csv_file_path_""
