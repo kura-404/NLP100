@@ -1,10 +1,7 @@
 # 形態素解析エンジンMeCabのPythonバインディングをインポート
-import MeCab 
+import MeCab
 
-# MeCabのTaggerオブジェクトを生成
-tagger = MeCab.Tagger()
-
-# 対象の日本語テキスト（太宰治『走れメロス』冒頭）
+# 解析したい日本語テキスト（複数行にわたる文章）
 text = """
 メロスは激怒した。
 必ず、かの邪智暴虐の王を除かなければならぬと決意した。
@@ -14,42 +11,46 @@ text = """
 けれども邪悪に対しては、人一倍に敏感であった。
 """
 
-# MeCabで形態素解析を実行（結果は1単語ごとに改行された文字列）
+# MeCabのTaggerオブジェクトを生成（辞書や動作設定はOSに依存して自動選択される）
+tagger = MeCab.Tagger()
+
+# MeCabでテキスト全体を形態素解析し、解析結果を改行区切りの文字列として取得
 node = tagger.parse(text)
 
-# 【出力1】MeCabの解析結果
-print("MeCabの解析結果")
-print(node)
-
-# 動詞の基本形を格納するリスト
+# 動詞の基本形（辞書に載っている元の形）を保存するためのリストを作成
 verbs = []
 
-# MeCabの解析結果を1行ずつ処理する（1行 = 1形態素）
+# MeCabの出力は1語ごとに1行なので、改行で分割して1行ずつ処理
 for line in node.split('\n'):
 
-    # 'EOS'（End Of Sentence）や空行は無視して次の行へ
+    # 'EOS' は MeCab における「文の終わり」のマーク。空行とともにスキップする
     if line == 'EOS' or line == '':
         continue
 
     try:
-        # タブで区切られた2つの情報に分ける（表層形と形態素情報）
+        # 各行は「表層形（表示される形） + タブ + 品詞情報」の形式なので、分ける
         surface, feature = line.split('\t')
 
-        # 形態素情報はカンマ区切りの文字列 → リストに変換する
+        # 品詞情報（「名詞,一般,*,*,*,*,〜」のようなカンマ区切りの情報）を分割
         features = feature.split(',')
 
-        # 品詞（名詞・動詞など）は最初の要素に格納されている
-        pos = features[0]
+        # 品詞情報の0番目（features[0]）が「動詞」だったら処理を進める
+        if features[0] == '動詞':
 
-        if pos == '動詞':
-            if len(features) > 6 and features[6] != '*':
-                base_form = features[6]
-                verbs.append(base_form)
+            # features[6] は「基本形」（例：した → する）を表す
+            # "*" の場合は値がないのでスキップ
+            if features[6] != '*':
+                base_form = features[6]  # 基本形を取り出す
+                verbs.append(base_form)  # 動詞リストに追加
 
     except ValueError:
-        # もし正しくタブで分割できなかった行があれば無視（安全策）
+        # 行にタブが含まれていないなど、splitに失敗した場合はスキップ
         continue
 
-# 【出力2】動詞のリスト（重複除去＆ソート）
-print("動詞のリスト")
-print(sorted(set(verbs)))
+# 【出力1】MeCabの解析結果をそのまま表示（省略なし）
+print("🔍 MeCabの解析結果（全文）")
+print(node)
+
+# 【出力2】Pythonのリスト形式で動詞の基本形をすべて表示（重複は残す）
+print("📝 動詞のリスト（Pythonのリスト形式）")
+print(verbs)
