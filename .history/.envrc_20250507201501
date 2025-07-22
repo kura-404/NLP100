@@ -1,0 +1,2 @@
+export TEST_ENV=hello-direnv
+export OPENAI_API_KEY="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"

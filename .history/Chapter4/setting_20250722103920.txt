@@ -1,0 +1,8 @@
+janome
+(.venv) mana-ku@mm-dhcp-194-148 Chapter4 % brew install mecab mecab-ipadic
+Warning: mecab 0.996 is already installed and up-to-date.
+To reinstall 0.996, run:
+  brew reinstall mecab
+Warning: mecab-ipadic 2.7.0-20070801 is already installed and up-to-date.
+To reinstall 2.7.0-20070801, run:
+  brew reinstall mecab-ipadic
