@@ -1,0 +1,303 @@
+以下に、**Python初心者向けに口頭で解説する原稿（38. TF・IDFタスク）**を提示します。
+Google Colab での実行を想定しており、各行ごとの説明、変数一覧、そして TF・IDF・TF-IDFの説明 を含みます。
+
+⸻
+
+🔊 解説用原稿（口頭での説明スクリプト）
+
+⸻
+
+【はじめに：このコードで何をするのか】
+
+「Wikipedia日本語記事の中から、『日本』に関する記事を対象にして、名詞の頻度情報を使い、TF-IDFスコアを計算します。そして、重要と判定された単語を上位20個、TF・IDF・TF-IDFの値と一緒に出力します。」
+
+⸻
+
+🧩 各行の口頭解説
+
+import gzip
+
+→ Python標準ライブラリの gzip を読み込んでいます。.gz という拡張子のついた圧縮ファイルを開くために使います。
+
+import json
+
+→ jsonライブラリは、文字列とPythonの辞書（dict）との相互変換に使います。Wikipediaの記事はJSON形式で保存されています。
+
+import re
+
+→ reは「正規表現」のライブラリで、特定のパターンにマッチする文字列を抽出したり削除したりするために使います。
+
+import math
+
+→ 数学関数を提供するライブラリです。今回はTF-IDFの計算に使う log()（対数）を使うために読み込んでいます。
+
+from collections import Counter, defaultdict
+
+→ Counter は単語数をカウントするのに便利なクラス、defaultdict はキーがないときでも初期値を持った辞書を作るのに使います。
+
+import MeCab
+
+→ 日本語の形態素解析ライブラリです。文を単語に分解し、品詞などの情報を取得します。
+
+⸻
+
+
+tagger = MeCab.Tagger()
+
+→ MeCabのTaggerインスタンスを作成します。これでテキストを解析できるようになります。
+
+tf_list = []
+
+→ 各記事の単語頻度（TF）を入れるリストです。1記事＝1つのCounterが入ります。
+
+df_counter = Counter()
+
+→ 単語ごとの「DF（Document Frequency）」、つまり何記事に登場したかを数える辞書です。
+
+file_path = "/content/drive/MyDrive/jawiki-country.json.gz"
+
+→ 処理対象ファイルのパスです。Google DriveにアップしたWikipediaのコーパスファイルを指定しています。
+
+⸻
+
+
+with gzip.open(file_path, mode='rt', encoding='utf-8') as f:
+
+→ 圧縮されたファイルをテキストモードで開きます。with 文で開くと、使い終わったら自動で閉じてくれる安全な書き方です。
+
+    for line in f:
+
+→ 各行（1記事）を1つずつ処理します。
+
+        article = json.loads(line)
+
+→ 1行はJSON形式の文字列なので、Pythonの辞書に変換します。
+
+        text = article.get("text", "")
+        title = article.get("title", "")
+
+→ 記事の中から "text" と "title" の情報を取り出します。なければ空文字にしておきます。
+
+⸻
+
+
+        if "日本" not in title:
+            continue
+
+→ 記事のタイトルに「日本」が含まれていない場合はスキップします。今回の対象は「日本」に関する記事だけです。
+
+⸻
+
+
+        clean_text = re.sub(r'\[\[.*?\]\]', '', text)
+        clean_text = re.sub(r"''+", '', clean_text)
+
+→ Wikipediaのマークアップ（[[ ]]や’’）を正規表現で除去して、本文をきれいにします。
+
+⸻
+
+
+        noun_counter = Counter()
+        seen_terms = set()
+
+→ 今回の記事で出てきた名詞の頻度を数えるためのCounterと、DFのために名詞の種類（ユニークな語）を記録する集合（set）を作ります。
+
+⸻
+
+
+        node = tagger.parseToNode(clean_text)
+        while node:
+
+→ MeCabで形態素解析し、1単語ずつ取り出していきます。
+
+            surface = node.surface
+            features = node.feature.split(',')
+            pos = features[0]
+
+→ 表層形（表に見える文字列）と品詞を取り出します。
+
+            if pos.startswith("名詞"):
+                noun_counter[surface] += 1
+                seen_terms.add(surface)
+
+→ 名詞だけを対象にしてカウント＆DF用に記録します。
+
+            node = node.next
+
+→ 次の単語へ進みます。
+
+⸻
+
+
+        tf_list.append(noun_counter)
+
+→ 記事ごとのTF（名詞の頻度）をリストに追加します。
+
+        for term in seen_terms:
+            df_counter[term] += 1
+
+→ この記事に出てきた名詞すべてに対して、文書頻度（DF）を1ずつカウントします。
+
+⸻
+
+
+N = len(tf_list)
+
+→ 文書数（記事数）をカウントします。TFのリストの長さがそのまま記事数です。
+
+⸻
+
+
+tfidf_scores = defaultdict(float)
+
+→ TF-IDFスコアを格納する辞書です。初期値を0.0とすることで加算しやすくしています。
+
+⸻
+
+
+for tf in tf_list:
+    total_terms = sum(tf.values())
+
+→ 各記事について、出現した名詞の合計数を求めます（TFの正規化用）。
+
+    for term, freq in tf.items():
+        tf_value = freq / total_terms
+        df = df_counter[term]
+        idf = math.log((N + 1) / (df + 1)) + 1
+        tfidf_scores[term] += tf_value * idf
+
+→ それぞれの語について：
+	•	TF（term frequency）は、その語の出現数 ÷ 総単語数
+	•	IDF（inverse document frequency）は、記事数 ÷ その語が登場した記事数の対数
+	•	TF × IDF のスコアを合計します（複数記事に出るため）
+
+※ +1 しているのは、0除算を避ける「スムージング」の工夫です。
+
+⸻
+
+
+for term, score in sorted(tfidf_scores.items(), key=lambda x: x[1], reverse=True)[:20]:
+
+→ TF-IDFスコアが高い順に20語だけを取り出して表示します。
+
+    tf_sum = sum(tf[term] for tf in tf_list if term in tf)
+    idf = math.log((N + 1) / (df_counter[term] + 1)) + 1
+    print(f"{term}\tTF: {tf_sum:.4f}\tIDF: {idf:.4f}\tTF-IDF: {score:.4f}")
+
+→ それぞれの語について、最終的なTF・IDF・TF-IDFを出力しています。
+
+⸻
+
+📘 変数一覧
+
+変数名	内容
+tagger	MeCabの形態素解析器
+tf_list	各記事における名詞の出現頻度（Counter）のリスト
+df_counter	各語の文書頻度（何記事に出たか）
+file_path	対象とするWikipediaファイルのパス
+clean_text	マークアップを除去したテキスト
+noun_counter	1記事内の名詞の頻度カウンター
+seen_terms	DFカウント用のユニーク名詞集合
+N	対象記事数
+tfidf_scores	各語の最終TF-IDFスコア
+
+
+⸻
+
+📗 TF, IDF, TF-IDFの用語解説
+
+用語	略	意味	役割
+Term Frequency	TF	単語が1つの文書にどれくらい出てきたか	その単語の「重要度」を示す
+Inverse Document Frequency	IDF	単語が何文書に出ているかの逆指標	よく出る（＝一般的）単語のスコアを下げる
+TF-IDF	-	TF × IDF の値	ある単語がその文書でどれだけ「特徴的」かを示す指標
+
+
+⸻
+もちろんです。以下に、TF・IDF・TF-IDF の説明を初心者にも丁寧にわかりやすくまとめました。例も交えて解説します。
+
+⸻
+
+📘 TF・IDF・TF-IDF のやさしい解説
+
+⸻
+
+🔷 1. TF（Term Frequency）とは？
+
+意味：
+「ある文書の中で、特定の単語が何回出てきたか」を示す指標です。
+
+目的：
+その文書にとって、その単語がどれだけ重要かを測るために使います。
+
+計算式：
+\text{TF}(t, d) = \frac{\text{単語 }t \text{ の出現回数}}{\text{文書 }d \text{ に含まれるすべての単語数}}
+
+例：
+文書「私は日本に行った。日本の文化が好き。」
+→「日本」は2回出てきて、全体で6単語あるなら
+
+\text{TF}(\text{日本}) = \frac{2}{6} \approx 0.333
+
+⸻
+
+🔷 2. IDF（Inverse Document Frequency）とは？
+
+意味：
+「その単語がどれだけ珍しいか」を示す指標です。
+
+目的：
+「どの文書にも登場するようなありふれた単語（例：は、の、です）」の重要度を下げるために使います。
+
+計算式：
+\text{IDF}(t) = \log\left( \frac{N}{df_t} \right)
+
+※スムージング処理を加えると：
+\text{IDF}(t) = \log\left( \frac{N+1}{df_t + 1} \right) + 1
+	•	N ：全体の文書数
+	•	df_t ：単語 t が出現する文書の数
+
+例：
+「日本」という単語が1000文書中100文書に登場したなら
+
+\text{IDF}(\text{日本}) = \log\left(\frac{1000}{100}\right) = \log(10) = 1.0
+
+一方、「の」は全ての文書に登場するなら
+
+\text{IDF}(\text{の}) = \log\left(\frac{1000}{1000}\right) = \log(1) = 0
+
+→ よって「の」の重要度は0になります。
+
+⸻
+
+🔷 3. TF-IDFとは？
+
+意味：
+TFとIDFを掛け合わせた指標。
+「その文書でよく出てきて（TFが高い）」「かつ他の文書ではあまり出てこない（IDFが高い）」単語に高いスコアを与えます。
+
+計算式：
+\text{TF-IDF}(t, d) = \text{TF}(t, d) \times \text{IDF}(t)
+
+目的：
+「その文書に特有な重要語」を見つける。
+
+⸻
+
+🎓 まとめ（図解イメージ）
+
+単語	TF（文書内でどれだけ多いか）	IDF（全体でどれだけ珍しいか）	TF-IDF（文書にとっての重要度）
+日本	高い	高い	高い（→重要！）
+の	高い	低い	低い（→無視してOK）
+明治維新	中くらい	高い	中〜高（→内容的に大事）
+
+
+⸻
+
+🗣 補足：
+	•	TFだけ使うと「の」や「は」が常に上位に来てしまう。
+	•	IDFだけ使うとレアすぎる単語（例えば専門用語や誤字）が上位に来てしまう。
+	•	TFとIDFを掛け算することで、「その文書らしさ」を表す単語が浮かび上がる。
+
+⸻
+
+さらに図解や日本語文書での事例が欲しければ、お申し付けください。グラフや表で可視化も可能です。
