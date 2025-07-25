@@ -1,0 +1,96 @@
+	1.	from spacy import displacy
+→ これは「spaCyライブラリ」の中にある displacy（ディスプラシー） という可視化用の機能を使うための準備です。
+from A import B という書き方は、Aの中のBだけを取り出して使う、という意味になります。
+
+⸻
+
+	2.	from IPython.display import display, HTML
+→ これはJupyter NotebookやGoogle Colabの中でHTMLを表示するための特別な関数を読み込んでいます。
+display() や HTML() という関数が後で出てきますが、それを使えるようにする行です。
+
+⸻
+
+	3.	import spacy
+→ これはPythonの自然言語処理ライブラリ「spaCy（スペイシー）」全体を読み込む処理です。
+import とは「外部の機能をこのスクリプトに読み込む」ためのPythonの命令です。
+
+⸻
+
+	4.	nlp = spacy.load("ja_ginza")
+→ spacy.load() は、spaCyに用意された言語モデルをロード（読み込み）する関数です。
+ここでは "ja_ginza" という日本語用のモデル（GiNZA）を読み込んでおり、それを nlp という変数に代入しています。
+以降、nlp() と書けば、日本語の文を解析できるようになります。
+
+⸻
+
+	5.	text = "メロスは激怒した。"
+→ 解析したい日本語の文を text という変数に入れています。
+Pythonでは " で囲まれた文字列は「str型（文字列）」になります。
+
+⸻
+
+	6.	doc = nlp(text)
+→ この行で、先ほど読み込んだGiNZAモデル（nlp）に文章を渡しています。
+すると、構文解析や品詞解析がされた doc（ドキュメント）という解析結果のオブジェクトが返ってきます。
+これはspaCy独自のデータ型で、文や単語、係り受け情報などが入っています。
+
+⸻
+
+	7.	html = displacy.render(doc, style="dep", options={"compact": True})
+→ この行では、構文解析の結果（doc）を displacy.render() を使ってHTMLとして描画用に変換しています。
+
+	•	style="dep" は「依存構造（係り受け）」を描くという意味です。
+	•	options={"compact": True} は表示を詰めてコンパクトにする設定です。
+その結果が html という変数に入ります。
+
+⸻
+
+	8.	display(HTML(html))
+→ 最後に、その html を HTML() に包んでから display() 関数で表示します。
+これにより、Google Colab や Jupyter Notebook のセル上に 図として可視化されます。
+
+⸻
+
+🧾 使用された変数の一覧
+
+変数名	説明
+nlp	日本語解析モデル（GiNZA）を読み込んだオブジェクト
+text	解析対象の日本語の文（“メロスは激怒した。”）
+doc	文章を解析した結果が入ったspaCyのDocオブジェクト
+html	displacyで描画されたHTMLコード
+（補足）display, HTML	ノートブック上でHTMLを表示するための関数
+
+
+⸻
+
+🧭 画像の構造（係り受け木）の読み解き方
+
+アップロードされた画像に含まれる係り受け木は以下のような構造でした：
+
+メロス（PROPN） --nsubj→ 激怒（VERB） --aux→ し（AUX）
+                                    \
+                                     → た（AUX）
+は（ADP） --case→ メロス
+
+🔠 用語の略語一覧と意味
+
+表記	意味	解説
+PROPN	Proper Noun（固有名詞）	メロスのような名前など
+ADP	Adposition（前置詞／助詞）	「は」「が」「を」など
+VERB	動詞	「激怒」のように動作を表す
+AUX	Auxiliary（助動詞）	「し」「た」など、補助的な動詞や助詞
+nsubj	nominal subject（主語）	「メロス」が「激怒した」の主語
+aux	auxiliary（助動詞的な語）	「し」「た」が「激怒」にくっついている
+case	格助詞	「は」は「メロス」に係る助詞（主題）
+
+
+⸻
+
+🧩 まとめると：
+	•	「メロス」は nsubj（主語）として「激怒」に係っています
+	•	「は」は case（格）として「メロス」に係っています
+	•	「し」「た」は aux として「激怒」に補足的についています
+
+全体として、「メロスは激怒した」という構文が、文法的にどのように構成されているかをツリー構造で視覚化しています。
+
+⸻
