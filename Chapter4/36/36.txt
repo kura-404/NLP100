@@ -1,0 +1,238 @@
+以下に、Wikipediaコーパスに対してMeCabを用いて表層形ベースの出現頻度をカウントするPythonスクリプトの、初心者向け口頭解説用の原稿を用意しました。
+
+⸻
+
+✅ 口頭解説用原稿（コード1行ずつ・初心者向け）
+
+⸻
+
+1行目：
+
+import gzip
+
+これは「gzip形式」の圧縮ファイルを扱うためのライブラリを読み込んでいます。
+Wikipediaコーパスは .json.gz という圧縮形式なので、これが必要です。
+
+⸻
+
+2行目：
+
+import json
+
+JSON（ジェイソン）形式で書かれたデータを、Pythonの辞書に変換するためのライブラリです。
+1行に1記事のJSONがある形式なので、それを辞書として扱います。
+
+⸻
+
+3行目：
+
+import re
+
+「正規表現（regular expression）」を使って文字列のパターンを操作できるモジュールです。
+Wikipedia特有のマークアップを除去する処理に使います。
+
+⸻
+
+4行目：
+
+from collections import Counter
+
+Counter は辞書のようなデータ構造で、「要素ごとの出現回数」を簡単にカウントできます。
+今回は単語の出現頻度を数えるために使います。
+
+⸻
+
+5行目：
+
+import MeCab
+
+日本語の形態素解析器「MeCab（メカブ）」を使うためのライブラリです。
+単語の区切りや品詞の情報を得るために使用します。
+
+⸻
+
+6行目：
+
+tagger = MeCab.Tagger()
+
+Tagger() はMeCabの本体を起動するクラスです。
+ここでは辞書指定をせず、pipでインストールされた unidic-lite 辞書が自動的に使われます。
+
+⸻
+
+7行目：
+
+file_path = "/content/drive/MyDrive/jawiki-country.json.gz"
+
+これは処理するWikipediaのコーパスファイルのファイルパスを指定しています。
+Google Drive上にあるファイルへのパスを示しています。
+
+⸻
+
+8行目：
+
+word_counter = Counter()
+
+Counter型の変数 word_counter を用意します。
+ここに単語ごとの出現回数が自動的に追加されていきます。
+
+⸻
+
+9行目：
+
+with gzip.open(file_path, mode='rt', encoding='utf-8') as f:
+
+圧縮された .gz ファイルを**テキストモード（読み込み）**で開きます。
+with 構文を使うことで、ファイルを安全に開閉できます。
+
+⸻
+
+10行目：
+
+    for line in f:
+
+ファイルから1行ずつ読み込みます。
+このコーパスは1行に1記事分の情報が入っているので、行ごとに処理していきます。
+
+⸻
+
+11行目：
+
+        article = json.loads(line)
+
+1行のJSON文字列をPythonの辞書に変換します。
+ここで article["text"] などの形で中身にアクセスできるようになります。
+
+⸻
+
+12行目：
+
+        text = article.get("text", "")
+
+"text" というキーに対応する記事本文を取り出します。
+なければ空文字列を返すようにしています。
+
+⸻
+
+13〜14行目：
+
+        clean_text = re.sub(r'\[\[.*?\]\]', '', text)
+        clean_text = re.sub(r"''+", '', clean_text)
+
+正規表現を使って、Wikipediaにあるマークアップ（リンクや強調など）を取り除いています。
+記事本文のクリーンアップです。
+
+⸻
+
+15行目：
+
+        node = tagger.parseToNode(clean_text)
+
+MeCabを使って、文章を1単語ごとに分解します。
+この node は、ある単語に関する情報を持っており、node.next で次に進めます。
+
+⸻
+
+16行目：
+
+        while node:
+
+これは、node が存在するかぎり（つまり文章の最後まで）繰り返すループです。
+
+⸻
+
+17行目：
+
+            surface = node.surface
+
+surface は、文章に出てきたそのままの形（表層形）の単語を表します。
+例：「行った」や「食べます」など、活用形を含んだ形です。
+
+⸻
+
+18行目：
+
+            features = node.feature.split(',')
+
+この1単語の品詞情報や活用情報などをカンマで分割して取得します。
+例：「名詞-普通名詞-一般」や「動詞-五段活用」などが得られます。
+
+⸻
+
+19行目：
+
+            pos = features[0]
+
+features の0番目には品詞の大分類（例：「名詞」「助詞」など）が入っており、それを pos として取得します。
+
+⸻
+
+20行目：
+
+            if not pos.startswith("補助記号") and not pos.startswith("助詞") and not pos.startswith("助動詞"):
+
+補助記号（記号）・助詞・助動詞 のような分析上のノイズになる単語を除外しています。
+startswith は「文字列がこの語で始まるかどうか」を判定する関数です。
+
+⸻
+
+21行目：
+
+                word_counter[surface] += 1
+
+出現した単語の表層形を word_counter にカウントアップしています。
+最初は0からスタートし、繰り返すたびに自動で加算されます。
+
+⸻
+
+22行目：
+
+            node = node.next
+
+次の単語に進みます。
+これにより while ループが次々と単語を処理していきます。
+
+⸻
+
+24行目：
+
+for word, freq in word_counter.most_common(20):
+
+出現頻度の高い単語を上位から順に取り出す処理です。
+most_common(20) は出現回数が多い順に20個だけ取り出します。
+
+⸻
+
+25行目：
+
+    print(f"{word}\t{freq}")
+
+単語（表層形）とその出現回数を、タブ区切りで表示しています。
+例：「日本  1234」のような出力になります。
+
+⸻
+
+✅ 変数一覧
+
+変数名	説明
+file_path	Wikipediaコーパス（圧縮ファイル）のパス
+tagger	MeCabの形態素解析器
+word_counter	単語の出現頻度をカウントする辞書型（Counter）
+line	1行ごとのJSON形式のWikipedia記事
+article	JSONを辞書に変換したもの
+text	1記事分の本文テキスト
+clean_text	マークアップ除去後の本文
+node	MeCabが返す単語の構造体（形態素ノード）
+surface	表層形（そのままの単語）
+features	品詞や活用などの情報（カンマ区切り）
+pos	品詞の大分類（名詞・助詞など）
+word	出現頻度の高い単語（表層形）
+freq	出現回数
+
+
+⸻
+
+必要に応じて：
+	•	グラフ化の解説原稿
+	•	出力結果の意味説明（例：「日本」が頻出する理由）
+などもご提供できます。希望があればお知らせください。
